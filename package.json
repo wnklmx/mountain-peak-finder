@@ -1,0 +1,28 @@
+{
+  "name": "mountain-peak-finder",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "data:peaks": "node scripts/fetch-peaks.mjs",
+    "icons": "node scripts/make-icons.mjs",
+    "data:peaks-geonames": "node scripts/fetch-peaks-geonames.mjs"
+  },
+  "dependencies": {
+    "leaflet": "^1.9.4",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/leaflet": "^1.9.22",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vite-plugin-pwa": "^2.0.0"
+  }
+}

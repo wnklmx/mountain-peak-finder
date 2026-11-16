@@ -1,0 +1,14 @@
+{
+  "name": "Alps",
+  "bbox": [
+    5.5,
+    43.5,
+    16.5,
+    48.2
+  ],
+  "count": 23236,
+  "generated": "2026-11-16T21:09:30.050Z",
+  "source": "GeoNames country dumps (feature class T)",
+  "license": "CC-BY-4.0",
+  "attribution": "Peak data © GeoNames (CC BY 4.0)"
+}
