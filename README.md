@@ -20,9 +20,8 @@ Install it from the browser like an app and it keeps working offline.
 - **Map** – terrain map with your position, a field-of-view wedge and every peak as a dot.
 - **Peaks** – the list view: distance, bearing, elevation angle, turn-by-turn arrows,
   search and sorting, with a "behind ridge" tag for occluded peaks.
-- **Demo locations** – Chamonix, Zermatt (Gornergrat, Jungfraujoch), Innsbruck,
-  Berchtesgaden, Bolzano, Grindelwald, so you can try it anywhere (append
-  `?demo=gornergrat` to the URL).
+- **Demo locations** – Chamonix, Gornergrat, Jungfraujoch, Innsbruck, Berchtesgaden,
+  Bolzano, Grindelwald, so you can try it anywhere (append `?demo=gornergrat` to the URL).
 - **PWA** – installable, offline after the first load, auto-updating.
 
 ## Run it
