@@ -9,9 +9,10 @@ interface Props {
   selectedId: number | null;
   onSelect: (id: number | null) => void;
   radiusKm: number;
+  hidden: Set<number>;
 }
 
-export default function PeakList({ peaks, heading, selectedId, onSelect, radiusKm }: Props) {
+export default function PeakList({ peaks, heading, selectedId, onSelect, radiusKm, hidden }: Props) {
   const [sort, setSort] = useState<SortKey>('distance');
   const [query, setQuery] = useState('');
 
@@ -63,11 +64,12 @@ export default function PeakList({ peaks, heading, selectedId, onSelect, radiusK
         <div className="rows">
           {sorted.map((peak) => {
             const isSelected = peak.id === selectedId;
+            const isHidden = hidden.has(peak.id);
             const relative = heading != null ? normalize180(peak.bearing - heading) : normalize180(peak.bearing);
             return (
               <button
                 key={peak.id}
-                className={`peak-row ${isSelected ? 'selected' : ''}`}
+                className={`peak-row ${isSelected ? 'selected' : ''} ${isHidden ? 'behind' : ''}`}
                 onClick={() => onSelect(isSelected ? null : peak.id)}
               >
                 <span className="dir-arrow" style={{ transform: `rotate(${relative}deg)` }} aria-hidden>
@@ -76,7 +78,10 @@ export default function PeakList({ peaks, heading, selectedId, onSelect, radiusK
                   </svg>
                 </span>
                 <span className="peak-main">
-                  <span className="peak-name">{peak.name}</span>
+                  <span className="peak-name">
+                    {peak.name}
+                    {isHidden ? <span className="behind-tag">behind ridge</span> : null}
+                  </span>
                   <span className="peak-meta">
                     {formatElevation(peak.ele)} · {formatDistance(peak.distance)} · {Math.round(peak.bearing)}°{' '}
                     {cardinal(peak.bearing)}

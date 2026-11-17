@@ -181,17 +181,31 @@ main {
   left: 0;
   right: 0;
   display: flex;
-  align-items: baseline;
-  gap: 10px;
-  padding: 12px 14px 26px;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 14px 26px;
   background: linear-gradient(180deg, rgba(6, 12, 22, 0.92), rgba(6, 12, 22, 0));
   pointer-events: none;
+}
+
+.panorama-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panorama-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
 }
 
 .panorama-heading {
   display: flex;
   align-items: baseline;
   gap: 6px;
+  flex: none;
 }
 
 .panorama-heading .deg {
@@ -213,10 +227,30 @@ main {
   font-size: 12px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.hidden-toggle {
+  pointer-events: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--warn);
+  font: inherit;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-decoration: underline dotted;
+}
+
+.hidden-toggle.on {
+  color: var(--sky);
 }
 
 .lock-btn {
   margin-left: auto;
+  flex: none;
   pointer-events: auto;
   padding: 5px 11px;
   border-radius: 999px;
@@ -231,6 +265,124 @@ main {
   background: var(--accent);
   border-color: var(--accent);
   color: #151006;
+}
+
+.cam-btn {
+  pointer-events: auto;
+  width: 32px;
+  height: 32px;
+  margin-left: 6px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(18, 26, 41, 0.9);
+  color: var(--muted);
+}
+
+.cam-btn:active {
+  color: var(--accent);
+}
+
+.panorama-camera .panorama-top {
+  background: linear-gradient(180deg, rgba(4, 8, 14, 0.72), rgba(4, 8, 14, 0));
+}
+
+.panorama-camera .panorama-bottom {
+  background: linear-gradient(0deg, rgba(4, 8, 14, 0.8), rgba(4, 8, 14, 0));
+  padding-bottom: 54px;
+}
+
+/* ---------- camera ---------- */
+
+.camera-view {
+  position: absolute;
+  inset: 0;
+  background: #05080d;
+}
+
+.camera-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #05080d;
+}
+
+.camera-fallback {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(10, 15, 24, 0.92);
+  backdrop-filter: blur(8px);
+  text-align: center;
+}
+
+.camera-fallback p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.camera-controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom) + 8px);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 12px;
+}
+
+.cam-pill {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(10, 15, 24, 0.72);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  backdrop-filter: blur(6px);
+}
+
+.cam-fov {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(10, 15, 24, 0.72);
+  backdrop-filter: blur(6px);
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.cam-fov button {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: rgba(24, 36, 55, 0.9);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1;
 }
 
 .panorama-bottom {
@@ -435,6 +587,28 @@ main {
 
 .peak-row.selected {
   background: rgba(246, 183, 60, 0.08);
+}
+
+.peak-row.behind .peak-name,
+.peak-row.behind .peak-angle {
+  color: var(--muted);
+}
+
+.peak-row.behind .dir-arrow {
+  color: var(--line);
+}
+
+.behind-tag {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--muted);
+  vertical-align: 1px;
 }
 
 .dir-arrow {
@@ -658,6 +832,17 @@ input[type='range'] {
 .sheet h2 {
   margin: 0 0 14px;
   font-size: 17px;
+}
+
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 14px;
+}
+
+.sheet-head h2 {
+  margin: 0;
 }
 
 .field {

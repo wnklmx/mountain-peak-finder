@@ -23,10 +23,17 @@ export default function SettingsSheet({
   if (!open) return null;
 
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet" onClick={(event) => event.stopPropagation()}>
+    <div className="sheet-backdrop" onPointerDown={onClose}>
+      <div className="sheet" onPointerDown={(event) => event.stopPropagation()}>
         <div className="sheet-handle" />
-        <h2>Settings</h2>
+        <div className="sheet-head">
+          <h2>Settings</h2>
+          <button className="icon-btn" onClick={onClose} aria-label="Close settings">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round">
+              <path d="M6 6l12 12M18 6 6 18" />
+            </svg>
+          </button>
+        </div>
 
         <div className="field switch-field">
           <div>
@@ -54,6 +61,37 @@ export default function SettingsSheet({
             </select>
           </div>
         ) : null}
+
+        <div className="field switch-field">
+          <div>
+            <span className="field-name">Terrain skyline</span>
+            <span className="field-hint">Download DEM tiles and hide peaks behind ridges (~8 MB, cached)</span>
+          </div>
+          <button
+            className={`switch ${settings.terrain ? 'on' : ''}`}
+            onClick={() => onChange({ terrain: !settings.terrain })}
+            aria-pressed={settings.terrain}
+          >
+            <span />
+          </button>
+        </div>
+
+        <div className="field">
+          <span className="field-name">
+            Camera width <b>{settings.cameraFov}°</b>
+          </span>
+          <input
+            type="range"
+            min={40}
+            max={100}
+            step={1}
+            value={settings.cameraFov}
+            onChange={(event) => onChange({ cameraFov: Number(event.target.value) })}
+          />
+          <span className="field-hint">
+            How wide the camera lens sees. Adjust until a ridge lines up with its outline in the camera view.
+          </span>
+        </div>
 
         <div className="field">
           <span className="field-name">

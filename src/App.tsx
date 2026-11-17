@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
+import CameraView from './components/CameraView';
 import MapView from './components/MapView';
-import Panorama from './components/Panorama';
+import Panorama, { type PanoramaProps } from './components/Panorama';
 import PeakList from './components/PeakList';
 import SettingsSheet from './components/SettingsSheet';
 import { insideRegion, loadData, rankPeaks, type Peak, type RegionMeta } from './data';
@@ -8,8 +9,11 @@ import { normalize360, type PeakView } from './geo';
 import { DEMO_SITES, loadSettings, saveSettings, type Settings } from './settings';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useHeading } from './hooks/useHeading';
+import { useTerrain } from './hooks/useTerrain';
 
 type Tab = 'aim' | 'map' | 'list';
+
+const NO_HIDDEN = new Set<number>();
 
 const params = new URLSearchParams(window.location.search);
 const forcedDemo = params.get('demo');
@@ -27,6 +31,8 @@ export default function App() {
     };
   });
   const [tab, setTab] = useState<Tab>(initialTab);
+  const [camera, setCamera] = useState(false);
+  const [showHidden, setShowHidden] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [viewBearing, setViewBearing] = useState(0);
@@ -60,16 +66,37 @@ export default function App() {
   const useManual = demoMode || sensor.heading == null;
   const heading = useManual ? manualHeading : normalize360((sensor.heading ?? 0) + settings.headingOffset);
 
-  const eyeAlt = settings.altitudeOverride ?? fix?.altitude ?? 0;
-  const altitudeKnown = settings.altitudeOverride != null || fix?.altitude != null;
+  const gpsAlt = settings.altitudeOverride ?? fix?.altitude ?? null;
+
   const qLat = fix ? Math.round(fix.lat * 1e4) / 1e4 : null;
   const qLon = fix ? Math.round(fix.lon * 1e4) / 1e4 : null;
+
+  // The worker needs peak positions, not their angles, so it can run off the
+  // first ranking; the ground elevation it returns then refines that ranking.
+  const firstRank = useMemo<PeakView[]>(() => {
+    if (qLat == null || qLon == null) return [];
+    return rankPeaks(peaks, { lat: qLat, lon: qLon }, gpsAlt ?? 0, settings.radiusKm);
+  }, [peaks, qLat, qLon, gpsAlt, settings.radiusKm]);
+
+  const terrain = useTerrain({
+    enabled: settings.terrain && qLat != null,
+    eye: fix ? { lat: fix.lat, lon: fix.lon } : null,
+    altitude: gpsAlt,
+    radiusKm: settings.radiusKm,
+    peaks: firstRank
+  });
+
+  const eyeAlt = terrain.eyeAltitude ?? gpsAlt ?? 0;
+  const altitudeKnown = gpsAlt != null || terrain.groundElevation != null;
   const qAlt = Math.round(eyeAlt);
 
   const ranked = useMemo<PeakView[]>(() => {
     if (qLat == null || qLon == null) return [];
     return rankPeaks(peaks, { lat: qLat, lon: qLon }, qAlt, settings.radiusKm);
   }, [peaks, qLat, qLon, qAlt, settings.radiusKm]);
+
+  const horizon = settings.terrain ? terrain.horizon : null;
+  const hidden = settings.terrain ? terrain.hidden : NO_HIDDEN;
 
   const outsideRegion = fix ? !insideRegion(meta?.bbox, fix) : false;
 
@@ -107,6 +134,23 @@ export default function App() {
     setSelectedId(null);
   };
 
+  const panoramaProps: PanoramaProps = {
+    peaks: ranked,
+    viewBearing,
+    onViewBearing: setViewBearing,
+    follow: settings.follow,
+    onFollowChange: (follow) => patchSettings({ follow }),
+    heading,
+    selectedId,
+    onSelect: setSelectedId,
+    radiusKm: settings.radiusKm,
+    altitudeKnown,
+    horizon,
+    hidden,
+    showHidden,
+    onToggleHidden: () => setShowHidden((current) => !current)
+  };
+
   return (
     <div className="app">
       <header className="topbar">
@@ -125,6 +169,30 @@ export default function App() {
             <span className="chip warn">no fix</span>
           )}
           {fix ? <span className="chip">{Math.round(eyeAlt)} m</span> : null}
+          {settings.terrain ? (
+            <span
+              className={`chip ${
+                terrain.status === 'ready' ? 'ok' : terrain.status === 'error' ? 'warn' : terrain.status === 'working' ? 'warn' : ''
+              }`}
+              title={
+                terrain.status === 'ready'
+                  ? `Skyline from ${terrain.tilesFailed ? 'partial' : 'full'} DEM coverage in ${terrain.ms} ms`
+                  : 'Terrain'
+              }
+            >
+              {terrain.status === 'working'
+                ? terrain.progress && terrain.progress.total > 0
+                  ? `terrain ${Math.round((terrain.progress.done / terrain.progress.total) * 100)}%`
+                  : 'terrain'
+                : terrain.status === 'ready'
+                  ? 'terrain'
+                  : terrain.status === 'error'
+                    ? 'no terrain'
+                    : terrain.status === 'unsupported'
+                      ? 'no terrain'
+                      : 'terrain off'}
+            </span>
+          ) : null}
         </div>
         <button className="icon-btn" onClick={() => setSettingsOpen(true)} aria-label="Settings">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -136,18 +204,16 @@ export default function App() {
 
       <main>
         <section className={`view ${tab === 'aim' ? 'active' : ''}`} aria-hidden={tab !== 'aim'} inert={tab !== 'aim'}>
-          <Panorama
-            peaks={ranked}
-            viewBearing={viewBearing}
-            onViewBearing={setViewBearing}
-            follow={settings.follow}
-            onFollowChange={(follow) => patchSettings({ follow })}
-            heading={heading}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            radiusKm={settings.radiusKm}
-            altitudeKnown={altitudeKnown}
-          />
+          {camera ? (
+            <CameraView
+              {...panoramaProps}
+              onExit={() => setCamera(false)}
+              cameraFov={settings.cameraFov}
+              onCameraFov={(cameraFov) => patchSettings({ cameraFov })}
+            />
+          ) : (
+            <Panorama {...panoramaProps} onCamera={() => setCamera(true)} />
+          )}
         </section>
 
         <section className={`view ${tab === 'map' ? 'active' : ''}`} aria-hidden={tab !== 'map'} inert={tab !== 'map'}>
@@ -169,6 +235,7 @@ export default function App() {
             selectedId={selectedId}
             onSelect={setSelectedId}
             radiusKm={settings.radiusKm}
+            hidden={hidden}
           />
         </section>
 

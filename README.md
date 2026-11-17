@@ -8,15 +8,21 @@ Install it from the browser like an app and it keeps working offline.
 
 ![Aim view](docs/aim.jpg)
 
-## What it does today (Phase 0)
+## What it does today (Phase 1)
 
 - **Aim** – a 90° panorama of every peak around you, placed at its true bearing and
   elevation angle, with drag-to-look and compass lock. Labels never overlap.
+- **Terrain skyline** – real DEM silhouettes drawn in distance bands, with **ridge
+  occlusion**: peaks behind a ridge are hidden (tap the `hidden` count to reveal them as
+  hollow rings).
+- **Camera AR** – the rear camera with the skyline and labels on top, plus a calibration
+  pill (`FOV`) that matches the overlay to the real lens.
 - **Map** – terrain map with your position, a field-of-view wedge and every peak as a dot.
 - **Peaks** – the list view: distance, bearing, elevation angle, turn-by-turn arrows,
-  search and sorting.
-- **Demo locations** – Chamonix, Zermatt, Innsbruck, Berchtesgaden, Bolzano, Grindelwald,
-  so you can try it anywhere (append `?demo=chamonix` to the URL).
+  search and sorting, with a "behind ridge" tag for occluded peaks.
+- **Demo locations** – Chamonix, Zermatt (Gornergrat, Jungfraujoch), Innsbruck,
+  Berchtesgaden, Bolzano, Grindelwald, so you can try it anywhere (append
+  `?demo=gornergrat` to the URL).
 - **PWA** – installable, offline after the first load, auto-updating.
 
 ## Run it
@@ -64,6 +70,23 @@ The `d²/(2R′)` term is earth curvature corrected for standard atmospheric ref
 785 m over 100 km, so it cannot be skipped. Eye altitude comes from GPS (or the demo site);
 a manual override lives in settings.
 
+## How the skyline and occlusion work
+
+A Web Worker ray-marches the horizon in 0.5° steps, using AWS Terrain Tiles (Terrarium
+PNG heightmaps) at zoom levels 13 down to 9 as the distance grows. Rays are corrected for
+the same curvature and refraction as the peaks, and each ray keeps the maximum angle it
+sees over four distance cuts (3, 12, 40 and 120 km); the panorama fills those bands
+separately to give the silhouette depth.
+
+A peak is drawn only if its own elevation angle clears the ridge profile just in front of
+it. The test skips the first 200 m and tolerates 14 m of canopy/DSM bias with a 0.3° floor,
+so a treeline does not hide a summit. The eye is raised to the DEM ground plus 1.6 m when
+GPS altitude is missing or low, which avoids the ground you stand on hiding everything.
+
+The first terrain load downloads roughly **8 MB** of DEM tiles around you (a few seconds on
+a phone); the service worker keeps them in the `dem-tiles` cache, so later visits are
+instant. Walking about a kilometre reuses the same tiles; only the view direction changes.
+
 ## Deploy to GitHub Pages
 
 The workflow in `.github/workflows/deploy.yml` builds and publishes on every push to `main`.
@@ -84,10 +107,14 @@ open it on Android Chrome and choose **Install app**.
 ```
 src/
   geo.ts                    projection, bearing, elevation angle, formatting
+  dem.ts                    Terrarium tiles, Mercator maths, distance bands
   data.ts                   GeoJSON loading, radius filter, ranking
   hooks/useGeolocation.ts   watchPosition wrapper
   hooks/useHeading.ts       compass + smoothing + iOS permission
+  hooks/useTerrain.ts       worker lifecycle, progressive horizons
+  worker/terrain.worker.ts  raymarch, tile cache, occlusion, skyline bands
   components/Panorama.tsx   the aim view (SVG, label collision, drag)
+  components/CameraView.tsx camera stream + cover-crop aware overlay
   components/MapView.tsx    Leaflet map, FOV wedge, peak markers
   components/PeakList.tsx   searchable, sortable list
   components/SettingsSheet.tsx
@@ -99,17 +126,20 @@ scripts/
 
 ## Roadmap
 
-- **Phase 1 – terrain skyline.** Sample AWS Terrain Tiles (Terrarium PNGs) in a Web Worker,
-  ray-march a horizon profile, and draw the real silhouette behind the peak dots. This also
-  gives a proper visibility test: a peak is only labelled if no ridge blocks the line of sight.
-- **Phase 2 – camera AR.** Rear camera as the background, skyline and labels projected with
-  a calibrated FOV.
-- **Phase 3 – offline areas.** "Download this valley" caches DEM and peak tiles in IndexedDB.
+- **Phase 1 – terrain skyline.** Done: DEM raymarch in a worker, banded silhouette, and a
+  per-peak visibility test verified against an independent Python port (about 99% agreement
+  at Chamonix; 3,260 hidden / 138 visible from Gornergrat).
+- **Phase 2 – camera AR.** Done: rear camera background with the same overlay, cover-crop
+  aware FOV and a calibration control.
+- **Phase 3 – offline areas.** "Download this valley" caches DEM and peak tiles in IndexedDB
+  so a trip with no signal still has a skyline.
 
 ## Attribution
 
 - Peak data: [GeoNames](https://www.geonames.org/) country dumps, **CC BY 4.0**
   (or OpenStreetMap, **ODbL**, if you regenerate with `data:peaks`).
+- Elevation: [AWS Open Data Terrain Tiles](https://registry.opendata.aws/terrain-tiles/)
+  (Terrarium), originally from Mapzen.
 - Map tiles: © OpenStreetMap contributors, style ©
   [OpenTopoMap](https://opentopomap.org) (CC-BY-SA).
 - Elevation angles are estimates. Curvature and refraction are corrected; GPS altitude

@@ -37,6 +37,15 @@ export default defineConfig(({ command }) => ({
         navigateFallback: 'index.html',
         runtimeCaching: [
           {
+            // Terrain-RGB tiles never change; keep them for good.
+            urlPattern: /^https:\/\/elevation-tiles-prod\.s3\.amazonaws\.com\/terrarium\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'dem-tiles',
+              expiration: { maxEntries: 2000, maxAgeSeconds: 60 * 60 * 24 * 365 }
+            }
+          },
+          {
             urlPattern: /\/data\/.*\.(geojson|json)$/i,
             handler: 'CacheFirst',
             options: {
