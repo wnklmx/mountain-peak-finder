@@ -1,6 +1,6 @@
-# Peak Finder
+# Buscacumbres
 
-A PeakFinder-style web app that tells you which mountain peaks you are looking at.
+A web app that tells you which mountain peaks you are looking at.
 It is a static site: no backend, no accounts, no API keys, no developer account.
 Install it from the browser like an app and it keeps working offline.
 

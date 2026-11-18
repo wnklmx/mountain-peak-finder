@@ -38,7 +38,7 @@ async function overpass(query, attempt = 0) {
       method: 'POST',
       headers: {
         'content-type': 'application/x-www-form-urlencoded',
-        'user-agent': 'mountain-peak-finder/0.1 (github.com/wnklmx)'
+        'user-agent': 'buscacumbres/0.1 (github.com/wnklmx)'
       },
       body: new URLSearchParams({ data: query }).toString()
     });

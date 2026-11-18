@@ -43,7 +43,7 @@ export const DEFAULT_SETTINGS: Settings = {
   cameraFov: 66
 };
 
-const KEY = 'peakfinder.settings.v1';
+const KEY = 'buscacumbres.settings.v1';
 
 export function loadSettings(): Settings {
   try {

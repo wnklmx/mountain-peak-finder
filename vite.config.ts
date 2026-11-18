@@ -12,8 +12,8 @@ export default defineConfig(({ command }) => ({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/*.png'],
       manifest: {
-        name: 'Peak Finder',
-        short_name: 'Peaks',
+        name: 'Buscacumbres',
+        short_name: 'Buscacumbres',
         description: 'Identify the mountain peaks around you, offline.',
         theme_color: '#0a0a17',
         background_color: '#07080f',
