@@ -78,17 +78,17 @@ export default function MapView({ fix, peaks, heading, selectedId, onSelect, lay
       radius: 7,
       color: '#ffffff',
       weight: 3,
-      fillColor: '#f6b73c',
+      fillColor: '#b18cf0',
       fillOpacity: 1
     }).addTo(layerGroup);
 
     if (fix.accuracy > 0) {
       L.circle([fix.lat, fix.lon], {
         radius: Math.min(fix.accuracy, 500),
-        color: '#f6b73c',
+        color: '#b18cf0',
         weight: 1,
         opacity: 0.4,
-        fillColor: '#f6b73c',
+        fillColor: '#b18cf0',
         fillOpacity: 0.08
       }).addTo(layerGroup);
     }
@@ -101,10 +101,10 @@ export default function MapView({ fix, peaks, heading, selectedId, onSelect, lay
         points.push([edge.lat, edge.lon]);
       }
       L.polygon(points, {
-        color: '#f6b73c',
+        color: '#b18cf0',
         weight: 1,
         opacity: 0.55,
-        fillColor: '#f6b73c',
+        fillColor: '#b18cf0',
         fillOpacity: 0.1
       }).addTo(layerGroup);
     }
@@ -123,9 +123,9 @@ export default function MapView({ fix, peaks, heading, selectedId, onSelect, lay
       const isSelected = peak.id === selectedId;
       const marker = L.circleMarker([peak.lat, peak.lon], {
         radius: isSelected ? 8 : 4,
-        color: isSelected ? '#7dd3fc' : '#0a101c',
+        color: isSelected ? '#8fa9e8' : '#07080f',
         weight: isSelected ? 2 : 1,
-        fillColor: isSelected ? '#7dd3fc' : '#f6b73c',
+        fillColor: isSelected ? '#8fa9e8' : '#b18cf0',
         fillOpacity: 1
       });
       marker.bindTooltip(

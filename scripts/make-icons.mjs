@@ -58,9 +58,11 @@ function encodePng(width, height, rgba) {
   ]);
 }
 
-const BG = [10, 15, 24];
-const ROCK = [246, 183, 60];
-const SNOW = [243, 247, 255];
+const BG_TOP = [22, 17, 44];
+const BG_BOTTOM = [27, 46, 99];
+const GROUND = [104, 96, 176];
+const ROCK = [177, 140, 240];
+const SNOW = [243, 240, 255];
 
 function insideTriangle(px, py, a, b, c) {
   const d1 = (px - b[0]) * (a[1] - b[1]) - (a[0] - b[0]) * (py - b[1]);
@@ -92,9 +94,11 @@ function makeIcon(size, scale) {
     for (let x = 0; x < n; x++) {
       const u = (x + 0.5) / n;
       const v = (y + 0.5) / n;
-      let color = BG;
+      let color = BG_TOP.map((start, channel) =>
+        Math.round(start + (BG_BOTTOM[channel] - start) * v)
+      );
       const groundY = transform(0.8);
-      if (Math.abs(v - groundY) < 0.012 * scale && u > transform(0.08) && u < transform(0.92)) color = [34, 48, 74];
+      if (Math.abs(v - groundY) < 0.012 * scale && u > transform(0.08) && u < transform(0.92)) color = GROUND;
       if (insideTriangle(u, v, mountain[0], mountain[1], mountain[2])) color = ROCK;
       if (insideTriangle(u, v, snow[0], snow[1], snow[2])) color = SNOW;
       const offset = (y * n + x) * 4;
@@ -144,9 +148,15 @@ for (const [name, size, scale] of outputs) {
 }
 
 const favicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#0a0f18"/>
-  <path d="M8 50 32 14 56 50Z" fill="#f6b73c"/>
-  <path d="M32 14 42.7 30H21.3Z" fill="#f3f7ff"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#16112c"/>
+      <stop offset="100%" stop-color="#1b2e63"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+  <path d="M8 50 32 14 56 50Z" fill="#b18cf0"/>
+  <path d="M32 14 42.7 30H21.3Z" fill="#f3f0ff"/>
 </svg>
 `;
 writeFileSync(resolve(here, '../public/favicon.svg'), favicon);

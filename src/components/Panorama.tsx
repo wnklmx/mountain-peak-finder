@@ -5,8 +5,8 @@ import type { HorizonProfile } from '../worker/terrain.worker';
 const DEFAULT_FOV = 90;
 
 /** Top colour of each distance band's fill, nearest first. */
-const BAND_TOP = ['#101c2b', '#16233a', '#1c2c47', '#233655'];
-const BAND_LATERAL = ['#7c8fa6', '#6a7f99', '#58708c', '#465e7a'];
+const BAND_TOP = ['#171a38', '#1d2249', '#232a5a', '#29336b'];
+const BAND_LATERAL = ['#7b7fa8', '#6b7099', '#5d6590', '#505a86'];
 
 export interface PanoramaProps {
   peaks: PeakView[];
@@ -289,20 +289,20 @@ export default function Panorama({
       <svg width={w} height={h} className="panorama-svg">
         <defs>
           <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#050a12" />
-            <stop offset="62%" stopColor="#0f1c2e" />
-            <stop offset="100%" stopColor="#22384f" />
+            <stop offset="0%" stopColor="#07060e" />
+            <stop offset="62%" stopColor="#10132b" />
+            <stop offset="100%" stopColor="#1e2a55" />
           </linearGradient>
           <linearGradient id="rock" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#1b2b40" />
-            <stop offset="45%" stopColor="#111d2c" />
-            <stop offset="100%" stopColor="#060b12" />
+            <stop offset="0%" stopColor="#1a1f3e" />
+            <stop offset="45%" stopColor="#0e1128" />
+            <stop offset="100%" stopColor="#06060f" />
           </linearGradient>
           {BAND_TOP.map((color, index) => (
             <linearGradient key={`band-${index}`} id={`band${index}`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={color} />
               <stop offset="55%" stopColor={color} stopOpacity={0.82} />
-              <stop offset="100%" stopColor="#050810" />
+              <stop offset="100%" stopColor="#05050c" />
             </linearGradient>
           ))}
         </defs>
@@ -332,13 +332,13 @@ export default function Panorama({
                     strokeOpacity={0.045}
                     strokeDasharray="2 6"
                   />
-                  <text x={7} y={yFor(deg) - 4} fontSize={8} fill="#46586f">
+                  <text x={7} y={yFor(deg) - 4} fontSize={8} fill="#4c5077">
                     +{deg}°
                   </text>
                 </g>
               ) : null
             )}
-            <line x1={0} x2={w} y1={horizonY} y2={horizonY} stroke="#7dd3fc" strokeOpacity={0.2} strokeDasharray="1 5" />
+            <line x1={0} x2={w} y1={horizonY} y2={horizonY} stroke="#8fa9e8" strokeOpacity={0.2} strokeDasharray="1 5" />
           </>
         )}
 
@@ -371,7 +371,7 @@ export default function Panorama({
                   y1={Math.min(y, Math.max(0, horizonY))}
                   x2={x}
                   y2={y}
-                  stroke={isSelected ? '#7dd3fc' : '#f6b73c'}
+                  stroke={isSelected ? '#8fa9e8' : '#b18cf0'}
                   strokeOpacity={isSelected ? 0.55 : 0.3}
                   strokeWidth={1}
                 />
@@ -391,9 +391,9 @@ export default function Panorama({
                   cx={x}
                   cy={y}
                   r={isSelected ? 5.2 : isHidden ? 2.6 : 2.7}
-                  fill={isHidden ? 'none' : isSelected ? '#7dd3fc' : '#f6b73c'}
+                  fill={isHidden ? 'none' : isSelected ? '#8fa9e8' : '#b18cf0'}
                   fillOpacity={isSelected || showStem ? 1 : 0.7}
-                  stroke={isHidden ? '#5b6b83' : '#080e18'}
+                  stroke={isHidden ? '#62678f' : '#05050c'}
                   strokeWidth={isHidden ? 1.2 : isSelected ? 1.5 : 1}
                 />
               </g>
@@ -409,14 +409,14 @@ export default function Panorama({
             textAnchor="middle"
             fontSize={11}
             fontWeight={600}
-            fill={label.selected ? '#7dd3fc' : '#e9eff8'}
-            stroke={camera ? '#04070c' : '#050a12'}
+            fill={label.selected ? '#8fa9e8' : '#ecedf9'}
+            stroke={camera ? '#04070c' : '#05050c'}
             strokeWidth={camera ? 3.4 : 2.6}
             paintOrder="stroke"
             pointerEvents="none"
           >
             {label.peak.name}
-            <tspan fontSize={9.5} fontWeight={400} fill="#93a4bd">
+            <tspan fontSize={9.5} fontWeight={400} fill="#9aa0c4">
               {'  '}
               {Math.round(label.peak.ele).toLocaleString('en-US')} m
             </tspan>
@@ -430,13 +430,13 @@ export default function Panorama({
               x2={xFor(headingRel)}
               y1={plotTop - 4}
               y2={plotBottom + 8}
-              stroke="#f6b73c"
+              stroke="#b18cf0"
               strokeOpacity={0.38}
               strokeWidth={1.5}
             />
             <path
               d={`M ${xFor(headingRel) - 5} ${plotTop - 12} L ${xFor(headingRel) + 5} ${plotTop - 12} L ${xFor(headingRel)} ${plotTop - 4} Z`}
-              fill="#f6b73c"
+              fill="#b18cf0"
             />
           </g>
         ) : null}
@@ -450,7 +450,7 @@ export default function Panorama({
                   x2={tick.x}
                   y1={plotBottom + 12}
                   y2={plotBottom + (tick.major ? 22 : 17)}
-                  stroke="#3b4c66"
+                  stroke="#3c3f66"
                   strokeWidth={1}
                 />
                 {tick.x > 14 && tick.x < w - 14 ? (
@@ -459,7 +459,7 @@ export default function Panorama({
                     y={plotBottom + 36}
                     textAnchor="middle"
                     fontSize={10}
-                    fill={tick.major ? '#b9c8dc' : '#6d7f99'}
+                    fill={tick.major ? '#c2c5e4' : '#777ca6'}
                   >
                     {Math.round(tick.bearing)}
                   </text>
@@ -471,14 +471,14 @@ export default function Panorama({
                     textAnchor="middle"
                     fontSize={11}
                     fontWeight={700}
-                    fill="#f6b73c"
+                    fill="#b18cf0"
                   >
                     {cardinal(tick.bearing)}
                   </text>
                 ) : null}
               </g>
             ))}
-            <line x1={w / 2} x2={w / 2} y1={plotTop - 18} y2={plotTop + 6} stroke="#f6b73c" strokeWidth={2} opacity={0.8} />
+            <line x1={w / 2} x2={w / 2} y1={plotTop - 18} y2={plotTop + 6} stroke="#b18cf0" strokeWidth={2} opacity={0.8} />
           </>
         )}
       </svg>
