@@ -145,6 +145,7 @@ export default function App() {
     onSelect: setSelectedId,
     radiusKm: settings.radiusKm,
     altitudeKnown,
+    eyeAlt,
     horizon,
     hidden,
     showHidden,
@@ -158,7 +159,7 @@ export default function App() {
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden>
             <path d="M2.5 19.5 9 6.5l3.6 7.2 2.1-3.4 6.8 9.2H2.5Z" fill="currentColor" />
           </svg>
-          <span>Peak Finder</span>
+          <span>Buscacumbres</span>
         </div>
         <div className="chips">
           {demoMode ? <span className="chip demo">demo</span> : null}
@@ -168,7 +169,6 @@ export default function App() {
           ) : (
             <span className="chip warn">no fix</span>
           )}
-          {fix ? <span className="chip">{Math.round(eyeAlt)} m</span> : null}
           {settings.terrain ? (
             <span
               className={`chip ${
@@ -303,7 +303,7 @@ export default function App() {
                 ? live.error ?? 'Allow location access for this site and try again.'
                 : live.status === 'unsupported'
                   ? 'This browser cannot report your position.'
-                  : 'Peak Finder needs your position to work out what you are looking at.'}
+                  : 'Buscacumbres needs your position to work out what you are looking at.'}
             </p>
             <button className="primary" onClick={enableDemo}>
               Try a demo location

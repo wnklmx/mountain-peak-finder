@@ -19,6 +19,8 @@ export interface PanoramaProps {
   onSelect: (id: number | null) => void;
   radiusKm: number;
   altitudeKnown: boolean;
+  /** Eye altitude in metres, shown with the viewpoint summary. */
+  eyeAlt: number;
   horizon: HorizonProfile | null;
   hidden: Set<number>;
   /** Horizontal field of view in degrees. 90 for the plain panorama, the
@@ -65,6 +67,7 @@ export default function Panorama({
   onSelect,
   radiusKm,
   altitudeKnown,
+  eyeAlt,
   horizon,
   hidden,
   fov = DEFAULT_FOV,
@@ -513,6 +516,8 @@ export default function Panorama({
               </button>
             </>
           ) : null}
+          <span className="dot">·</span>
+          <span>{Math.round(eyeAlt).toLocaleString('en-US')} m</span>
           <span className="dot">·</span>
           <span>{radiusKm} km</span>
         </div>
