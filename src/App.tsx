@@ -4,9 +4,9 @@ import MapView from './components/MapView';
 import Panorama, { type PanoramaProps } from './components/Panorama';
 import PeakList from './components/PeakList';
 import SettingsSheet from './components/SettingsSheet';
-import { insideRegion, loadData, rankPeaks, type Peak, type RegionMeta } from './data';
-import { normalize360, type PeakView } from './geo';
-import { DEMO_SITES, loadSettings, saveSettings, type Settings } from './settings';
+import { bestViewBearing, insideRegion, loadData, rankPeaks, type Peak, type RegionMeta } from './data';
+import { formatElevation, normalize360, type PeakView } from './geo';
+import { DEMO_SITES, loadSettings, saveSettings, type Settings, type Viewpoint } from './settings';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useHeading } from './hooks/useHeading';
 import { useTerrain } from './hooks/useTerrain';
@@ -20,13 +20,39 @@ const forcedDemo = params.get('demo');
 const tabParam = params.get('tab');
 const initialTab: Tab = tabParam === 'map' || tabParam === 'list' ? tabParam : 'aim';
 
+/**
+ * `?stand=<lat>,<lon>,<alt>,<name>` opens the panorama from an arbitrary point.
+ * Handy for sharing a viewpoint and for checking a build without tapping a map.
+ */
+function parseStand(raw: string | null): Viewpoint | null {
+  if (!raw) return null;
+  const [latRaw, lonRaw, altRaw, ...nameParts] = raw.split(',');
+  const lat = Number(latRaw);
+  const lon = Number(lonRaw);
+  const alt = Number(altRaw);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  return {
+    id: null,
+    name: nameParts.join(',').trim() || `${lat.toFixed(3)}, ${lon.toFixed(3)}`,
+    lat,
+    lon,
+    alt: Number.isFinite(alt) ? alt : 0
+  };
+}
+
+const standParam = parseStand(params.get('stand'));
+const headingParam = params.get('heading') != null ? Number(params.get('heading')) : NaN;
+const initialHeading = Number.isFinite(headingParam) ? normalize360(headingParam) : 35;
+
 export default function App() {
   const [settings, setSettings] = useState<Settings>(() => {
     const base = loadSettings();
+    if (standParam) return { ...base, demo: true, demoViewpoint: standParam };
     if (!forcedDemo) return base;
     return {
       ...base,
       demo: true,
+      demoViewpoint: null,
       demoSite: forcedDemo !== '1' && DEMO_SITES.some((site) => site.id === forcedDemo) ? forcedDemo : base.demoSite
     };
   });
@@ -35,8 +61,8 @@ export default function App() {
   const [showHidden, setShowHidden] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [viewBearing, setViewBearing] = useState(0);
-  const [manualHeading, setManualHeading] = useState(35);
+  const [viewBearing, setViewBearing] = useState(initialHeading);
+  const [manualHeading, setManualHeading] = useState(initialHeading);
 
   const [peaks, setPeaks] = useState<Peak[]>([]);
   const [meta, setMeta] = useState<RegionMeta | null>(null);
@@ -45,6 +71,10 @@ export default function App() {
 
   const demoMode = settings.demo;
   const demoSite = DEMO_SITES.find((site) => site.id === settings.demoSite) ?? DEMO_SITES[0];
+  const demoPoint = useMemo<Viewpoint>(() => {
+    if (settings.demoViewpoint) return settings.demoViewpoint;
+    return { id: null, name: demoSite.label, lat: demoSite.lat, lon: demoSite.lon, alt: demoSite.alt };
+  }, [settings.demoViewpoint, demoSite]);
 
   const live = useGeolocation(!demoMode);
   const sensor = useHeading(!demoMode);
@@ -52,16 +82,16 @@ export default function App() {
   const fix = useMemo(() => {
     if (demoMode) {
       return {
-        lat: demoSite.lat,
-        lon: demoSite.lon,
-        accuracy: 4,
-        altitude: demoSite.alt as number | null,
+        lat: demoPoint.lat,
+        lon: demoPoint.lon,
+        accuracy: 0,
+        altitude: demoPoint.alt as number | null,
         altitudeAccuracy: 4,
         at: Date.now()
       };
     }
     return live.fix;
-  }, [demoMode, demoSite, live.fix]);
+  }, [demoMode, demoPoint, live.fix]);
 
   const useManual = demoMode || sensor.heading == null;
   const heading = useManual ? manualHeading : normalize360((sensor.heading ?? 0) + settings.headingOffset);
@@ -83,7 +113,8 @@ export default function App() {
     eye: fix ? { lat: fix.lat, lon: fix.lon } : null,
     altitude: gpsAlt,
     radiusKm: settings.radiusKm,
-    peaks: firstRank
+    peaks: firstRank,
+    resetKey: demoMode ? `demo:${demoPoint.id ?? demoPoint.name}` : 'live'
   });
 
   const eyeAlt = terrain.eyeAltitude ?? gpsAlt ?? 0;
@@ -134,6 +165,32 @@ export default function App() {
     setSelectedId(null);
   };
 
+  /** Stand on a summit: the panorama, skyline and map all move there. */
+  const standOnPeak = (peak: Peak) => {
+    const bearing = bestViewBearing(peaks, { lat: peak.lat, lon: peak.lon }, settings.radiusKm);
+    setSettings((current) => ({
+      ...current,
+      demo: true,
+      demoViewpoint: { id: peak.id, name: peak.name, lat: peak.lat, lon: peak.lon, alt: peak.ele },
+      // The summit height is the eye height now; a leftover override would fight it.
+      altitudeOverride: null
+    }));
+    setSelectedId(null);
+    setCamera(false);
+    setShowHidden(false);
+    setTab('aim');
+    if (bearing != null) {
+      setManualHeading(bearing);
+      setViewBearing(bearing);
+    }
+  };
+
+  const returnToLive = () => {
+    setSettings((current) => ({ ...current, demo: false }));
+    setSelectedId(null);
+    setCamera(false);
+  };
+
   const panoramaProps: PanoramaProps = {
     peaks: ranked,
     viewBearing,
@@ -149,7 +206,8 @@ export default function App() {
     horizon,
     hidden,
     showHidden,
-    onToggleHidden: () => setShowHidden((current) => !current)
+    onToggleHidden: () => setShowHidden((current) => !current),
+    onStandOn: standOnPeak
   };
 
   return (
@@ -162,9 +220,8 @@ export default function App() {
           <span>Buscacumbres</span>
         </div>
         <div className="chips">
-          {demoMode ? <span className="chip demo">demo</span> : null}
           {dataState === 'loading' ? <span className="chip">loading</span> : null}
-          {fix ? (
+          {demoMode ? null : fix ? (
             <span className={`chip ${fix.accuracy <= 30 ? 'ok' : 'warn'}`}>{Math.round(fix.accuracy)} m</span>
           ) : (
             <span className="chip warn">no fix</span>
@@ -202,6 +259,21 @@ export default function App() {
         </button>
       </header>
 
+      {demoMode ? (
+        <div className="viewpoint-bar">
+          <svg className="viewpoint-icon" viewBox="0 0 24 24" width="15" height="15" aria-hidden>
+            <path d="M2.5 19.5 9 6.5l3.6 7.2 2.1-3.4 6.8 9.2H2.5Z" fill="currentColor" />
+          </svg>
+          <button className="viewpoint-name" onClick={() => setSettingsOpen(true)}>
+            <span className="viewpoint-label">{demoPoint.name}</span>
+            {settings.demoViewpoint ? <span className="viewpoint-alt">{formatElevation(demoPoint.alt)}</span> : null}
+          </button>
+          <button className="viewpoint-exit" onClick={returnToLive}>
+            Live
+          </button>
+        </div>
+      ) : null}
+
       <main>
         <section className={`view ${tab === 'aim' ? 'active' : ''}`} aria-hidden={tab !== 'aim'} inert={tab !== 'aim'}>
           {camera ? (
@@ -223,6 +295,7 @@ export default function App() {
             heading={heading}
             selectedId={selectedId}
             onSelect={setSelectedId}
+            onStandOn={standOnPeak}
             layer={settings.tileLayer}
             active={tab === 'map'}
           />
@@ -234,6 +307,7 @@ export default function App() {
             heading={heading}
             selectedId={selectedId}
             onSelect={setSelectedId}
+            onStandOn={standOnPeak}
             radiusKm={settings.radiusKm}
             hidden={hidden}
           />

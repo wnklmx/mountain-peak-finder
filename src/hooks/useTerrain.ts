@@ -35,17 +35,24 @@ interface Options {
   peaks: PeakView[];
   /** Degrees between horizon samples. 0.5° is smooth enough for a 90° view. */
   azimuthStep?: number;
+  /**
+   * Changes when the viewpoint is replaced rather than walked away from (a
+   * demo peak, a preset). The old skyline is dropped at once instead of being
+   * shown as if it belonged to the new place.
+   */
+  resetKey?: string;
 }
 
 /**
  * Runs the DEM raymarch in a worker. Requests are keyed on a coarse position
  * so walking a hundred metres does not throw away a five megabyte download.
  */
-export function useTerrain({ enabled, eye, altitude, radiusKm, peaks, azimuthStep = 0.5 }: Options): TerrainState {
+export function useTerrain({ enabled, eye, altitude, radiusKm, peaks, azimuthStep = 0.5, resetKey = '' }: Options): TerrainState {
   const [state, setState] = useState<TerrainState>(EMPTY);
   const workerRef = useRef<Worker | null>(null);
   const requestId = useRef(0);
   const lastKey = useRef('');
+  const lastResetKey = useRef<string | null>(null);
   const peaksRef = useRef(peaks);
   peaksRef.current = peaks;
 
@@ -126,8 +133,15 @@ export function useTerrain({ enabled, eye, altitude, radiusKm, peaks, azimuthSte
     if (key === lastKey.current) return;
     lastKey.current = key;
 
+    const replaced = lastResetKey.current !== null && lastResetKey.current !== resetKey;
+    lastResetKey.current = resetKey;
+
     requestId.current += 1;
-    setState((current) => ({ ...current, status: 'working', progress: { done: 0, total: 0 } }));
+    setState((current) =>
+      replaced
+        ? { ...EMPTY, status: 'working', progress: { done: 0, total: 0 }, tilesFailed: current.tilesFailed }
+        : { ...current, status: 'working', progress: { done: 0, total: 0 } }
+    );
 
     const payload: TerrainRequest = {
       type: 'terrain',
@@ -145,7 +159,7 @@ export function useTerrain({ enabled, eye, altitude, radiusKm, peaks, azimuthSte
       }))
     };
     worker.postMessage(payload);
-  }, [enabled, eye?.lat, eye?.lon, altitude, radiusKm, peaks, azimuthStep]);
+  }, [enabled, eye?.lat, eye?.lon, altitude, radiusKm, peaks, azimuthStep, resetKey]);
 
   return state;
 }

@@ -17,12 +17,24 @@ export const DEMO_SITES: DemoSite[] = [
   { id: 'grindelwald', label: 'Grindelwald · Eiger', lat: 46.6242, lon: 8.0414, alt: 1034 }
 ];
 
+/** A place to stand in demo mode: a preset, a summit picked on the map, or a link. */
+export interface Viewpoint {
+  /** Peak id when the viewpoint is a known summit. */
+  id: number | null;
+  name: string;
+  lat: number;
+  lon: number;
+  alt: number;
+}
+
 export interface Settings {
   radiusKm: number;
   altitudeOverride: number | null;
   headingOffset: number;
   demo: boolean;
   demoSite: string;
+  /** Picked from the map; takes precedence over `demoSite` while demo is on. */
+  demoViewpoint: Viewpoint | null;
   tileLayer: 'topo' | 'osm';
   follow: boolean;
   /** Raymarch the DEM for a real skyline and ridge occlusion. */
@@ -37,6 +49,7 @@ export const DEFAULT_SETTINGS: Settings = {
   headingOffset: 0,
   demo: false,
   demoSite: 'chamonix',
+  demoViewpoint: null,
   tileLayer: 'topo',
   follow: true,
   terrain: true,

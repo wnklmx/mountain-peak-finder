@@ -15,17 +15,22 @@ interface Props {
   heading: number | null;
   selectedId: number | null;
   onSelect: (id: number | null) => void;
+  onStandOn: (peak: PeakView) => void;
   layer: 'topo' | 'osm';
   active: boolean;
 }
 
-export default function MapView({ fix, peaks, heading, selectedId, onSelect, layer, active }: Props) {
+export default function MapView({ fix, peaks, heading, selectedId, onSelect, onStandOn, layer, active }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const tileRef = useRef<L.TileLayer | null>(null);
   const userLayerRef = useRef<L.LayerGroup | null>(null);
   const peakLayerRef = useRef<L.LayerGroup | null>(null);
   const hasCentered = useRef(false);
+  const selectRef = useRef(onSelect);
+  selectRef.current = onSelect;
+
+  const selected = selectedId != null ? peaks.find((peak) => peak.id === selectedId) ?? null : null;
 
   useEffect(() => {
     if (!hostRef.current || mapRef.current) return;
@@ -34,7 +39,9 @@ export default function MapView({ fix, peaks, heading, selectedId, onSelect, lay
       attributionControl: true,
       preferCanvas: true
     }).setView([46.5, 9], 7);
-    map.zoomControl.setPosition('bottomright');
+    map.zoomControl.setPosition('topright');
+    // A tap on empty map dismisses the peak card.
+    map.on('click', () => selectRef.current(null));
     userLayerRef.current = L.layerGroup().addTo(map);
     peakLayerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
@@ -126,7 +133,10 @@ export default function MapView({ fix, peaks, heading, selectedId, onSelect, lay
         color: isSelected ? '#8fa9e8' : '#07080f',
         weight: isSelected ? 2 : 1,
         fillColor: isSelected ? '#8fa9e8' : '#b18cf0',
-        fillOpacity: 1
+        fillOpacity: 1,
+        // Keep the tap on the dot from also reaching the map, which would
+        // immediately clear the selection it just made.
+        bubblingMouseEvents: false
       });
       marker.bindTooltip(
         `<strong>${peak.name}</strong><br>${formatElevation(peak.ele)} · ${formatDistance(peak.distance)}<br>${Math.round(
@@ -152,6 +162,23 @@ export default function MapView({ fix, peaks, heading, selectedId, onSelect, lay
   return (
     <div className="map-wrap">
       <div className="map-host" ref={hostRef} />
+      {selected ? (
+        <div className="map-card">
+          <div className="map-card-main">
+            <span className="map-card-name">{selected.name}</span>
+            <span className="map-card-meta">
+              {formatElevation(selected.ele)} · {formatDistance(selected.distance)} · {Math.round(selected.bearing)}°{' '}
+              {cardinal(selected.bearing)}
+            </span>
+          </div>
+          <button className="primary map-card-btn" onClick={() => onStandOn(selected)}>
+            View from here
+          </button>
+          <button className="detail-close" onClick={() => onSelect(null)} aria-label="Close">
+            ×
+          </button>
+        </div>
+      ) : null}
       <div className="map-fabs">
         <button
           className="fab"

@@ -90,6 +90,26 @@ export function rankPeaks(
   return out;
 }
 
+/**
+ * Bearing of the highest summit in range. A viewpoint picked on the map opens
+ * looking at something worth seeing instead of at an arbitrary north.
+ */
+export function bestViewBearing(peaks: Peak[], origin: LatLon, radiusKm: number): number | null {
+  const maxDistance = radiusKm * 1000;
+  let best: { bearing: number; ele: number } | null = null;
+
+  for (const peak of peaks) {
+    if (Math.abs(peak.lat - origin.lat) > 3 || Math.abs(peak.lon - origin.lon) > 5) continue;
+    const { x, y, distance } = project(origin, peak);
+    // Skip the summit you are standing on and anything at the same coordinates.
+    if (distance > maxDistance || distance < 200) continue;
+    if (best && peak.ele <= best.ele) continue;
+    best = { bearing: bearingOf(x, y), ele: peak.ele };
+  }
+
+  return best ? Math.round(best.bearing) : null;
+}
+
 export function insideRegion(bbox: [number, number, number, number] | undefined, point: LatLon): boolean {
   if (!bbox) return true;
   const [west, south, east, north] = bbox;

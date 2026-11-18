@@ -20,9 +20,17 @@ Install it from the browser like an app and it keeps working offline.
 - **Map** – terrain map with your position, a field-of-view wedge and every peak as a dot.
 - **Peaks** – the list view: distance, bearing, elevation angle, turn-by-turn arrows,
   search and sorting, with a "behind ridge" tag for occluded peaks.
-- **Demo locations** – Chamonix, Gornergrat, Jungfraujoch, Innsbruck, Berchtesgaden,
+- **Stand on any peak** – tap a peak on the map (or in the list) and the panorama becomes
+  the view from its summit, with the eye at the summit height and the map following. Tap a
+  peak, hit **View from here**, and check the view from a mountain you know; **Live** goes
+  back to your own position. The chosen viewpoint survives a reload.
+- **Preset viewpoints** – Chamonix, Gornergrat, Jungfraujoch, Innsbruck, Berchtesgaden,
   Bolzano, Grindelwald, so you can try it anywhere (append `?demo=gornergrat` to the URL).
 - **PWA** – installable, offline after the first load, auto-updating.
+
+Tap a peak on the map for the view from its summit:
+
+![Pick a peak on the map](docs/pick.jpg)
 
 ## Run it
 
@@ -35,6 +43,10 @@ npm run preview
 
 Camera and sensors need HTTPS (or `localhost`). To test on a phone over your LAN, use a
 tunnel such as `cloudflared tunnel --url http://localhost:5173`.
+
+To look out from a summit without going anywhere, add
+`?stand=45.9763,7.6586,4478,Matterhorn` (latitude, longitude, eye altitude in metres, name)
+or pick the peak on the map.
 
 ## Peak data
 
@@ -66,8 +78,8 @@ angle    = atan( (h − h₀ − d²/(2R′)) / d ),   R′ = R / (1 − 0.13)
 ```
 
 The `d²/(2R′)` term is earth curvature corrected for standard atmospheric refraction —
-785 m over 100 km, so it cannot be skipped. Eye altitude comes from GPS (or the demo site);
-a manual override lives in settings.
+785 m over 100 km, so it cannot be skipped. Eye altitude comes from GPS (or the viewpoint:
+a summit you stand on contributes its own height); a manual override lives in settings.
 
 ## How the skyline and occlusion work
 

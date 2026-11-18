@@ -8,11 +8,12 @@ interface Props {
   heading: number | null;
   selectedId: number | null;
   onSelect: (id: number | null) => void;
+  onStandOn: (peak: PeakView) => void;
   radiusKm: number;
   hidden: Set<number>;
 }
 
-export default function PeakList({ peaks, heading, selectedId, onSelect, radiusKm, hidden }: Props) {
+export default function PeakList({ peaks, heading, selectedId, onSelect, onStandOn, radiusKm, hidden }: Props) {
   const [sort, setSort] = useState<SortKey>('distance');
   const [query, setQuery] = useState('');
 
@@ -118,6 +119,13 @@ export default function PeakList({ peaks, heading, selectedId, onSelect, radiusK
           ) : (
             <p className="turn-line muted">Enable the compass to get turn-by-turn directions.</p>
           )}
+          <button className="detail-action" onClick={() => onStandOn(selected)}>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <path d="M12 21s6.5-6.2 6.5-10.5a6.5 6.5 0 1 0-13 0C5.5 14.8 12 21 12 21Z" />
+              <circle cx="12" cy="10.5" r="2.2" />
+            </svg>
+            View from here
+          </button>
         </div>
       ) : null}
     </div>

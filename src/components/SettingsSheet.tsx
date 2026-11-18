@@ -1,4 +1,5 @@
 import { DEMO_SITES, type Settings } from '../settings';
+import { formatElevation } from '../geo';
 import type { RegionMeta } from '../data';
 
 interface Props {
@@ -38,7 +39,7 @@ export default function SettingsSheet({
         <div className="field switch-field">
           <div>
             <span className="field-name">Demo location</span>
-            <span className="field-hint">Explore without GPS or leaving the sofa</span>
+            <span className="field-hint">Stand on any peak from the map, or pick a preset</span>
           </div>
           <button
             className={`switch ${settings.demo ? 'on' : ''}`}
@@ -50,16 +51,31 @@ export default function SettingsSheet({
         </div>
 
         {settings.demo ? (
-          <div className="field">
-            <span className="field-name">Demo site</span>
-            <select value={settings.demoSite} onChange={(event) => onChange({ demoSite: event.target.value })}>
-              {DEMO_SITES.map((site) => (
-                <option key={site.id} value={site.id}>
-                  {site.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          settings.demoViewpoint ? (
+            <div className="field">
+              <span className="field-name">Viewpoint</span>
+              <div className="viewpoint-field">
+                <span className="viewpoint-current">
+                  {settings.demoViewpoint.name} · {formatElevation(settings.demoViewpoint.alt)}
+                </span>
+                <button className="link-btn" onClick={() => onChange({ demoViewpoint: null })}>
+                  Use a preset
+                </button>
+              </div>
+              <span className="field-hint">Picked from the map. Tap any other peak there to move again.</span>
+            </div>
+          ) : (
+            <div className="field">
+              <span className="field-name">Demo site</span>
+              <select value={settings.demoSite} onChange={(event) => onChange({ demoSite: event.target.value })}>
+                {DEMO_SITES.map((site) => (
+                  <option key={site.id} value={site.id}>
+                    {site.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )
         ) : null}
 
         <div className="field switch-field">

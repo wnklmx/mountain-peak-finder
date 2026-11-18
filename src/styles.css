@@ -497,7 +497,7 @@ main {
 .map-fabs {
   position: absolute;
   right: 10px;
-  bottom: 86px;
+  bottom: 106px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1026,6 +1026,157 @@ input[type='range'] {
   background: rgba(248, 113, 113, 0.12);
   border: 1px solid rgba(248, 113, 113, 0.35);
   color: #fecaca;
+}
+
+/* ---------- viewpoint bar ---------- */
+
+.viewpoint-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  background: linear-gradient(90deg, rgba(60, 32, 102, 0.5), rgba(27, 46, 99, 0.5));
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+
+.viewpoint-icon {
+  flex: none;
+  color: var(--accent);
+}
+
+.viewpoint-name {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+  flex: 1;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+}
+
+.viewpoint-label {
+  font-size: 12px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.viewpoint-alt {
+  flex: none;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.viewpoint-exit {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(7, 8, 18, 0.55);
+  color: var(--sky);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.viewpoint-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.viewpoint-current {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.link-btn {
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--sky);
+  font-size: 12px;
+  text-decoration: underline;
+}
+
+.detail-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(177, 140, 240, 0.45);
+  background: linear-gradient(135deg, var(--violet-lift), var(--blue-lift));
+  color: #f4f0ff;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.detail-action:active {
+  filter: brightness(1.15);
+}
+
+/* ---------- map peak card ---------- */
+
+.map-card {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 28px;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(16, 20, 42, 0.97);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.map-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.map-card-name {
+  font-size: 14px;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-card-meta {
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-card-btn {
+  flex: none;
+  padding: 8px 12px;
+  font-size: 12px;
 }
 
 @media (max-height: 620px) {

@@ -33,6 +33,8 @@ export interface PanoramaProps {
   onToggleHidden?: () => void;
   /** Present when the caller can switch to the camera overlay. */
   onCamera?: () => void;
+  /** Present when the caller can move the viewpoint to a peak's summit. */
+  onStandOn?: (peak: PeakView) => void;
 }
 
 interface PlacedLabel {
@@ -74,7 +76,8 @@ export default function Panorama({
   camera = false,
   showHidden = false,
   onToggleHidden,
-  onCamera
+  onCamera,
+  onStandOn
 }: PanoramaProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -110,27 +113,37 @@ export default function Panorama({
 
   const hiddenInView = inView.length - visible.length;
 
-  // A stable vertical window: the whole skyline, not just the current view, so
-  // the scale does not jump while panning.
+  // A view-relative window: the skyline in and around what you are looking at.
+  // Using the whole circle let one near wall — the summit you are standing on,
+  // say — squash everything in front of you into a thin strip. The centre is
+  // quantised and the window kept wider than the view, so panning does not
+  // rescale continuously while you drag.
   const vertical = useMemo(() => {
     let max = 1.2;
     let min = -0.4;
+    const center = Math.round(viewBearing / 20) * 20;
+    const half = fov / 2 + 30;
+    // The cliff at your feet can read as -30°; showing it would squash every
+    // summit into a strip, so the skyline only reaches this far down.
+    const floor = -4;
     if (horizon) {
-      for (let i = 0; i < horizon.angles.length; i++) {
+      const count = horizon.angles.length;
+      const step = horizon.step || 360 / count;
+      for (let i = 0; i < count; i++) {
+        if (Math.abs(normalize180(i * step - center)) > half) continue;
         const a = horizon.angles[i];
         if (a > max) max = a;
-        if (a < min && a > -25) min = a;
+        if (a < min && a > floor) min = a;
       }
-    } else {
-      for (const entry of visible) {
-        if (entry.peak.angle > max) max = entry.peak.angle;
-        if (entry.peak.angle < min) min = entry.peak.angle;
-      }
+    }
+    for (const entry of visible) {
+      if (entry.peak.angle > max) max = entry.peak.angle;
+      if (entry.peak.angle < min && entry.peak.angle > floor) min = entry.peak.angle;
     }
     const top = Math.max(0.9, max + 0.45);
     const bottom = Math.min(-0.5, min - 0.3);
     return { top, span: Math.max(0.9, top - bottom), bottom };
-  }, [horizon, visible]);
+  }, [horizon, visible, viewBearing, fov]);
 
   const { top: topAngle, bottom: bottomAngle, span } = vertical;
   const yFor = (angle: number) => plotBottom - ((angle - bottomAngle) / span) * (plotBottom - plotTop);
@@ -555,6 +568,15 @@ export default function Panorama({
                 </span>
               </div>
             </div>
+            {onStandOn ? (
+              <button className="detail-action" onClick={() => onStandOn(selected)}>
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                  <path d="M12 21s6.5-6.2 6.5-10.5a6.5 6.5 0 1 0-13 0C5.5 14.8 12 21 12 21Z" />
+                  <circle cx="12" cy="10.5" r="2.2" />
+                </svg>
+                View from here
+              </button>
+            ) : null}
           </div>
         ) : (
           <div className="hint">
