@@ -4,10 +4,6 @@ import type { HorizonProfile } from '../worker/terrain.worker';
 
 const DEFAULT_FOV = 90;
 
-/** Top colour of each distance band's fill, nearest first. */
-const BAND_TOP = ['#171a38', '#1d2249', '#232a5a', '#29336b'];
-const BAND_LATERAL = ['#7b7fa8', '#6b7099', '#5d6590', '#505a86'];
-
 export interface PanoramaProps {
   peaks: PeakView[];
   viewBearing: number;
@@ -55,6 +51,24 @@ export function horizonAngleAt(angles: Float32Array, step: number, bearing: numb
   const a = angles[i];
   const b = angles[j];
   if (a < -89 || b < -89) return a < -89 ? (b < -89 ? null : b) : a;
+  return a + (b - a) * f;
+}
+
+/** The same interpolation for the distance of the ridge that made the horizon. */
+export function horizonDistanceAt(
+  distances: Float32Array,
+  step: number,
+  bearing: number
+): number | null {
+  const count = distances.length;
+  if (!count) return null;
+  const t = normalize360(bearing) / step;
+  const i = Math.floor(t) % count;
+  const j = (i + 1) % count;
+  const f = t - Math.floor(t);
+  const a = distances[i];
+  const b = distances[j];
+  if (a <= 0 || b <= 0) return a > 0 ? a : b > 0 ? b : null;
   return a + (b - a) * f;
 }
 
@@ -154,22 +168,23 @@ export default function Panorama({
     if (!horizon || !w) return null;
     const series = horizon.bands && horizon.bands.length ? horizon.bands : [horizon.angles];
     const cuts = horizon.cuts && horizon.cuts.length ? horizon.cuts : [Infinity];
+    const step = horizon.step || 360 / horizon.angles.length;
     const columns = Math.max(80, Math.ceil(w / 2));
-    const layers: Array<{ path: string; line: string; fill: string; stroke: string }> = [];
 
-    for (let s = series.length - 1; s >= 0; s--) {
-      const angles = series[s];
-      const cut = cuts[Math.min(s, cuts.length - 1)];
-      const columnAngles: Array<number | null> = [];
+    /**
+     * Highest terrain up to `cut`, traced across the view. Every summit in
+     * range is folded into the silhouette, so a dot never floats above the
+     * ridge it stands on.
+     */
+    const profile = (angles: Float32Array, cut: number) => {
+      const values: Array<number | null> = [];
+      const distances: number[] = [];
       for (let i = 0; i <= columns; i++) {
-        const x = (i / columns) * w;
-        const bearing = viewBearing + ((x - w / 2) / w) * fov;
-        columnAngles.push(horizonAngleAt(angles, horizon.step, bearing));
+        const bearing = viewBearing + (i / columns - 0.5) * fov;
+        values.push(horizonAngleAt(angles, step, bearing));
+        distances.push(horizonDistanceAt(horizon.distances, step, bearing) ?? 0);
       }
 
-      // The 0.5° profile plus smoothing rounds off sharp summits by up to a
-      // degree, which used to leave the peak dots floating above the ridge.
-      // Lift the silhouette onto every visible summit in this layer's range.
       for (const { peak, rel } of visible) {
         if (peak.distance > cut) continue;
         const center = Math.round((1 / 2 + rel / fov) * columns);
@@ -178,36 +193,95 @@ export default function Panorama({
           const i = center + d;
           if (i < 0 || i > columns) continue;
           const target = d === 0 ? peak.angle : peak.angle - 0.4;
-          const current = columnAngles[i];
-          if (current == null || target > current) columnAngles[i] = target;
+          const current = values[i];
+          if (current == null || target > current) {
+            values[i] = target;
+            distances[i] = peak.distance;
+          }
         }
       }
+
       // Carry the nearest known value across gaps so the silhouette stays one
       // closed shape instead of sprouting diagonals to the bottom corner.
-      const first = columnAngles.find((value) => value != null);
-      if (first == null) continue;
-      let carry = first;
+      const firstValue = values.find((value) => value != null);
+      if (firstValue == null) return null;
+      let carry = firstValue;
+      let carryDistance = 0;
       const points: Array<[number, number]> = [];
+      const pointDistances: number[] = [];
       let maxY = -Infinity;
       for (let i = 0; i <= columns; i++) {
-        const value = columnAngles[i];
-        if (value != null) carry = value;
+        const value = values[i];
+        if (value != null) {
+          carry = value;
+          carryDistance = distances[i] || carryDistance;
+        }
         const y = Math.max(plotTop - 60, Math.min(h, yFor(carry)));
         if (y > maxY) maxY = y;
         points.push([(i / columns) * w, y]);
+        pointDistances.push(carryDistance);
       }
       // A layer entirely under the bottom edge adds nothing but artefacts.
-      if (maxY >= h - 1) continue;
+      if (maxY >= h - 1) return null;
       const line = points.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(' L ');
-      layers.push({
-        path: `M ${line} L ${w} ${h} L 0 ${h} Z`,
-        line: `M ${line}`,
-        fill: `url(#band${Math.min(s, BAND_TOP.length - 1)})`,
-        stroke: BAND_LATERAL[s] ?? BAND_LATERAL[BAND_LATERAL.length - 1]
-      });
+      return { points, pointDistances, line };
+    };
+
+    if (camera) {
+      const layers: Array<{ line: string }> = [];
+      for (let s = series.length - 1; s >= 0; s--) {
+        const traced = profile(series[s], cuts[Math.min(s, cuts.length - 1)]);
+        if (traced) layers.push({ line: traced.line });
+      }
+      return { layers, mass: null, haze: [] as Array<{ d: string; color: string }> };
     }
-    return layers.length ? layers : null;
-  }, [horizon, w, viewBearing, fov, bottomAngle, span, plotTop, plotBottom, visible]);
+
+    // One silhouette: the real horizon over the whole radius. The distance
+    // bands above are contours of "what if the world ended here", which read
+    // as extra mountain ranges when they are filled. Depth instead comes from
+    // the ridge line fading towards the sky with distance.
+    const traced = profile(series[series.length - 1], Infinity);
+    if (!traced) return { layers: [], mass: null, haze: [] };
+
+    const nearRidge = [126, 133, 177];
+    const farRidge = [72, 81, 124];
+    const maxDistance = cuts[cuts.length - 1] || 120000;
+    const bucketOf = (distance: number) => {
+      const t = Math.max(0, Math.min(1, distance / maxDistance));
+      return Math.min(6, Math.round(t * 6));
+    };
+    const colorAt = (t: number) => {
+      const mix = (a: number, b: number) => Math.round(a + (b - a) * t);
+      return `rgb(${mix(nearRidge[0], farRidge[0])}, ${mix(nearRidge[1], farRidge[1])}, ${mix(nearRidge[2], farRidge[2])})`;
+    };
+    const pointAt = (i: number) =>
+      `${traced.points[i][0].toFixed(1)} ${traced.points[i][1].toFixed(1)}`;
+    const haze: Array<{ d: string; color: string }> = [];
+    let start = 0;
+    let bucket = bucketOf(traced.pointDistances[0]);
+    for (let i = 1; i < traced.points.length; i++) {
+      const next = bucketOf(traced.pointDistances[i]);
+      if (next === bucket) continue;
+      if (i - start > 1) {
+        const run: string[] = [];
+        for (let k = start; k <= i; k++) run.push(pointAt(k));
+        haze.push({ d: `M ${run.join(' L ')}`, color: colorAt(bucket / 6) });
+      }
+      start = i;
+      bucket = next;
+    }
+    if (traced.points.length - 1 - start > 1) {
+      const run: string[] = [];
+      for (let k = start; k < traced.points.length; k++) run.push(pointAt(k));
+      haze.push({ d: `M ${run.join(' L ')}`, color: colorAt(bucket / 6) });
+    }
+
+    return {
+      layers: [] as Array<{ line: string }>,
+      mass: `M ${traced.line} L ${w} ${h} L 0 ${h} Z`,
+      haze
+    };
+  }, [horizon, w, viewBearing, fov, plotTop, plotBottom, visible, camera]);
 
   const selected = selectedId != null ? peaks.find((peak) => peak.id === selectedId) ?? null : null;
 
@@ -314,20 +388,18 @@ export default function Panorama({
             <stop offset="45%" stopColor="#0e1128" />
             <stop offset="100%" stopColor="#06060f" />
           </linearGradient>
-          {BAND_TOP.map((color, index) => (
-            <linearGradient key={`band-${index}`} id={`band${index}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} />
-              <stop offset="55%" stopColor={color} stopOpacity={0.82} />
-              <stop offset="100%" stopColor="#05050c" />
-            </linearGradient>
-          ))}
+          <linearGradient id="mass" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#2a3263" />
+            <stop offset="55%" stopColor="#1b2145" />
+            <stop offset="100%" stopColor="#06060f" />
+          </linearGradient>
         </defs>
 
         {camera ? null : (
           <>
             <rect x={0} y={0} width={w} height={h} fill="url(#sky)" />
-            {skyline ? (
-              skyline.map((layer, index) => <path key={`fill-${index}`} d={layer.path} fill={layer.fill} />)
+            {skyline?.mass ? (
+              <path d={skyline.mass} fill="url(#mass)" />
             ) : (
               <rect x={0} y={Math.max(0, horizonY)} width={w} height={Math.max(0, h - horizonY)} fill="url(#rock)" />
             )}
@@ -358,19 +430,36 @@ export default function Panorama({
           </>
         )}
 
-        {skyline
-          ? skyline.map((layer, index) => (
+        {skyline ? (
+          camera ? (
+            skyline.layers.map((layer, index) => (
               <path
                 key={`ridge-${index}`}
                 d={layer.line}
                 fill="none"
-                stroke={camera ? '#dbeafe' : layer.stroke}
-                strokeOpacity={camera ? 0.9 : index === skyline.length - 1 ? 0.55 : 0.28}
-                strokeWidth={camera ? 1.5 : 1}
+                stroke="#dbeafe"
+                strokeOpacity={0.9}
+                strokeWidth={1.5}
                 strokeLinejoin="round"
               />
             ))
-          : null}
+          ) : (
+            <g>
+              {skyline.haze.map((segment, index) => (
+                <path
+                  key={`haze-${index}`}
+                  d={segment.d}
+                  fill="none"
+                  stroke={segment.color}
+                  strokeWidth={1.2}
+                  strokeOpacity={0.85}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              ))}
+            </g>
+          )
+        ) : null}
 
         {inView.slice(0, 260).map(({ peak, rel }) => {
           const x = xFor(rel);
@@ -378,7 +467,8 @@ export default function Panorama({
           const isSelected = peak.id === selectedId;
           const isHidden = hidden.has(peak.id);
           if (isHidden && !showHidden && !isSelected) return null;
-          const showStem = isSelected || labelledIds.has(peak.id);
+          const labelled = labelledIds.has(peak.id);
+          const showStem = isSelected || labelled;
           return (
             <g key={peak.id}>
               {showStem ? (
@@ -406,11 +496,11 @@ export default function Panorama({
                 <circle
                   cx={x}
                   cy={y}
-                  r={isSelected ? 5.2 : isHidden ? 2.6 : 2.7}
+                  r={isSelected ? 5.2 : isHidden ? 2.6 : labelled ? 2.8 : 1.7}
                   fill={isHidden ? 'none' : isSelected ? '#8fa9e8' : '#b18cf0'}
-                  fillOpacity={isSelected || showStem ? 1 : 0.7}
-                  stroke={isHidden ? '#62678f' : '#05050c'}
-                  strokeWidth={isHidden ? 1.2 : isSelected ? 1.5 : 1}
+                  fillOpacity={isHidden ? 1 : isSelected || labelled ? 0.95 : 0.32}
+                  stroke={isHidden ? '#62678f' : isSelected ? '#05050c' : 'none'}
+                  strokeWidth={isSelected ? 1.5 : 1}
                 />
               </g>
             </g>

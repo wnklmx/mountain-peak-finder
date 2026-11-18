@@ -11,10 +11,11 @@ Install it from the browser like an app and it keeps working offline.
 ## What it does today (Phase 1)
 
 - **Aim** – a 90° panorama of every peak around you, placed at its true bearing and
-  elevation angle, with drag-to-look and compass lock. Labels never overlap.
-- **Terrain skyline** – real DEM silhouettes drawn in distance bands, with **ridge
-  occlusion**: peaks behind a ridge are hidden (tap the `hidden` count to reveal them as
-  hollow rings).
+  elevation angle, with drag-to-look and compass lock. Labels never overlap; summits
+  without a label stay as faint, tappable dots.
+- **Terrain skyline** – one real DEM silhouette, its ridge line fading with distance, with
+  **ridge occlusion**: peaks behind a ridge are hidden (tap the `hidden` count to reveal
+  them as hollow rings).
 - **Camera AR** – the rear camera with the skyline and labels on top, plus a calibration
   pill (`FOV`) that matches the overlay to the real lens.
 - **Map** – terrain map with your position, a field-of-view wedge and every peak as a dot.
@@ -86,8 +87,10 @@ a summit you stand on contributes its own height); a manual override lives in se
 A Web Worker ray-marches the horizon in 0.5° steps, using AWS Terrain Tiles (Terrarium
 PNG heightmaps) at zoom levels 13 down to 9 as the distance grows. Rays are corrected for
 the same curvature and refraction as the peaks, and each ray keeps the maximum angle it
-sees over four distance cuts (3, 12, 40 and 120 km); the panorama fills those bands
-separately to give the silhouette depth.
+sees over four distance cuts (3, 12, 40 and 120 km). The panorama fills the full horizon
+once and tints its ridge line towards the sky as the generating ridge gets farther away;
+over the camera, where a fill would hide the video, the four cuts are drawn as layered
+outlines instead.
 
 A peak is drawn only if its own elevation angle clears the ridge profile just in front of
 it. The test skips the first 200 m and tolerates 14 m of canopy/DSM bias with a 0.3° floor,
@@ -137,9 +140,10 @@ scripts/
 
 ## Roadmap
 
-- **Phase 1 – terrain skyline.** Done: DEM raymarch in a worker, banded silhouette, and a
-  per-peak visibility test verified against an independent Python port (about 99% agreement
-  at Chamonix; 3,260 hidden / 138 visible from Gornergrat).
+- **Phase 1 – terrain skyline.** Done: DEM raymarch in a worker, a filled silhouette with
+  distance haze (layered outlines over the camera), and a per-peak visibility test verified
+  against an independent Python port (about 99% agreement at Chamonix; 3,260 hidden / 138
+  visible from Gornergrat).
 - **Phase 2 – camera AR.** Done: rear camera background with the same overlay, cover-crop
   aware FOV and a calibration control.
 - **Phase 3 – offline areas.** "Download this valley" caches DEM and peak tiles in IndexedDB
